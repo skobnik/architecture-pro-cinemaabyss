@@ -1,0 +1,122 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Container Diagram - Система "Кинобездна" (To-Be Architecture - Pure Microservices)
+
+Person(user, "Пользователь", "Смотрит фильмы через браузер или мобильное приложение")
+
+' ==================== ВНЕШНИЕ СИСТЕМЫ ====================
+System_Ext(cdn, "CDN", "Доставка статики и видео-стриминг")
+System_Ext(payment_gateway, "Платежный шлюз", "Stripe / YooMoney / CloudPayments")
+System_Ext(smtp_service, "Email Service", "SendGrid / Amazon SES")
+
+' ==================== СИСТЕМА КИНОБЕЗДНА ====================
+System_Boundary(cinemaabyss, "Кинобездна") {
+
+    ' --- API GATEWAY / PROXY LAYER ---
+    Container(api_gateway, "API Gateway", "Go/Envoy, HTTP/2, gRPC", "Единая точка входа. Маршрутизация запросов с процентным распределением. Strangler Pattern для постепенной миграции")
+    
+    ' --- CORE BUSINESS SERVICES ---
+    Container(auth_service, "Auth Service", "Go, JWT, OAuth2", "Аутентификация, авторизация, управление сессиями. Интеграция с социальными сетями")
+    
+    Container(user_service, "User Service", "Go, gRPC", "Управление профилями пользователей, настройки, избранное, история просмотров")
+    
+    Container(movies_service, "Movies Service", "Go, gRPC", "Метаданные фильмов, жанры, актёры, режиссеры, поиск и фильтрация")
+    
+    Container(legacy_monolith, "Legacy Monolith", "Python/Go, REST", "Унаследованная система. Постепенно выводится из эксплуатации через Strangler Pattern")
+    
+    Container(subscription_service, "Subscription Service", "Go, gRPC", "Управление подписками, тарифными планами, расчет стоимости")
+    
+    Container(payment_service, "Payment Service", "Go, gRPC", "Обработка платежей, транзакции, вебхуки от платежных систем")
+    
+    Container(content_service, "Content Service", "Go, HLS/DASH", "Управление видео контентом, стриминг, трансcoding, интеграция с CDN")
+    
+    Container(recommendation_service, "Recommendation Service", "Python, ML", "Персонализированные рекомендации фильмов на основе истории просмотров")
+    
+    ' --- EVENT PROCESSING SERVICES ---
+    Container(events_service, "Events Service", "Go, Kafka Consumer", "Обработка и маршрутизация системных событий, аудит логгирование")
+    
+    Container(notifications_service, "Notifications Service", "Go, WebSocket", "PUSH уведомления, email/SMS рассылки, управление каналами коммуникации")
+    
+    Container(analytics_service, "Analytics Service", "Python", "Аналитика просмотров, пользовательская аналитика, формирование отчетов")
+    
+    ' --- DATA STORES ---
+    ContainerDb(user_db, "User Database", "PostgreSQL", "Хранит профили пользователей, настройки, историю активности")
+    
+    ContainerDb(movies_db, "Movies Database", "PostgreSQL", "Хранит метаданные фильмов, жанры, актёров, рейтинги, связи")
+    
+    ContainerDb(subscription_db, "Subscription Database", "PostgreSQL", "Хранит данные о подписках, тарифах, истории изменений")
+    
+    ContainerDb(payment_db, "Payment Database", "PostgreSQL", "Хранит историю платежей, транзакции, статусы")
+    
+    ContainerDb(monolith_db, "Monolith Database", "PostgreSQL", "База данных монолитной системы. Постепенно мигрируется")
+    
+    ' --- INFRASTRUCTURE COMPONENTS ---
+    Container(kafka, "Message Broker", "Apache Kafka", "Асинхронная обработка событий между сервисами. Event bus для слабосвязанной архитектуры")
+    
+    Container(redis_cache, "Distributed Cache", "Redis", "Кеширование часто запрашиваемых данных для повышения производительности")
+    
+    Container(elastic_search, "Search Engine", "Elasticsearch", "Полнотекстовый поиск фильмов, актёров, режиссеров")
+    
+    Container(object_storage, "Object Storage", "S3/MinIO", "Хранилище видеофайлов, постеров, трейлеров, субтитров")
+}
+
+' ==================== ВЗАИМОДЕЙСТВИЯ ====================
+
+' Пользовательский трафик
+Rel(user, api_gateway, "Использует", "HTTPS/WebSocket")
+
+' Gateway routing (Strangler Pattern - постепенная миграция)
+Rel(api_gateway, auth_service, "Аутентификация запросов", "gRPC")
+Rel(api_gateway, user_service, "Управление профилем", "gRPC")
+Rel(api_gateway, movies_service, "Поиск и информация о фильмах (новая)", "gRPC (постепенно 0→100%)")
+Rel(api_gateway, legacy_monolith, "Унаследованные функции (старая)", "REST (постепенно 100→0%)")
+Rel(api_gateway, subscription_service, "Управление подпиской", "gRPC")
+Rel(api_gateway, payment_service, "Оплата подписки", "gRPC")
+Rel(api_gateway, content_service, "Просмотр видео", "HLS/DASH")
+Rel(api_gateway, recommendation_service, "Получение рекомендаций", "gRPC")
+
+' Синхронные взаимодействия между сервисами
+Rel(auth_service, user_db, "Читает/пишет данные пользователей", "SQL")
+Rel(user_service, user_db, "Управляет профилями", "SQL")
+Rel(movies_service, movies_db, "Управляет метаданными фильмов", "SQL")
+Rel(subscription_service, subscription_db, "Управляет подписками", "SQL")
+Rel(payment_service, payment_db, "Обрабатывает платежи", "SQL")
+Rel(legacy_monolith, monolith_db, "Работает с унаследованными данными", "SQL")
+Rel(recommendation_service, user_db, "Анализирует историю просмотров", "SQL (read only)")
+Rel(recommendation_service, movies_db, "Получает информацию о фильмах", "SQL (read only)")
+
+' Кеширование для производительности
+Rel(movies_service, redis_cache, "Кеширует популярные фильмы", "Redis protocol")
+Rel(auth_service, redis_cache, "Кеширует сессии пользователей", "Redis protocol")
+Rel(user_service, redis_cache, "Кеширует профили", "Redis protocol")
+Rel(content_service, redis_cache, "Кеширует информацию о видео", "Redis protocol")
+
+' Поисковая функциональность
+Rel(movies_service, elastic_search, "Индексирует фильмы для поиска", "REST API")
+Rel(api_gateway, elastic_search, "Прямые поисковые запросы", "REST API")
+
+' Хранение и доставка контента
+Rel(content_service, object_storage, "Чтение/запись видеофайлов", "S3 API")
+Rel(content_service, cdn, "Кеширование контента в CDN", "REST API")
+
+' Асинхронная коммуникация (Event-Driven Architecture)
+Rel(user_service, kafka, "Публикует User.Created, User.Updated", "Kafka protocol")
+Rel(movies_service, kafka, "Публикует Movie.Viewed, Movie.Rated", "Kafka protocol")
+Rel(subscription_service, kafka, "Публикует Subscription.Created, Subscription.Updated", "Kafka protocol")
+Rel(payment_service, kafka, "Публикует Payment.Processed, Payment.Failed", "Kafka protocol")
+Rel(content_service, kafka, "Публикует Content.Watched, Content.Paused", "Kafka protocol")
+
+Rel(kafka, events_service, "Потребляет все системные события", "Kafka protocol")
+Rel(kafka, notifications_service, "Потребляет события для уведомлений", "Kafka protocol")
+Rel(kafka, analytics_service, "Потребляет события для аналитики", "Kafka protocol")
+
+' Внешние интеграции
+Rel(payment_service, payment_gateway, "Инициирует платежи", "REST/HTTPS")
+Rel(notifications_service, smtp_service, "Отправляет email уведомления", "SMTP/API")
+
+' Внутренние вызовы для расширенной функциональности
+Rel(movies_service, recommendation_service, "Получает рекомендации для пользователя", "gRPC")
+Rel(recommendation_service, movies_service, "Запрашивает информацию о фильмах", "gRPC")
+
+@enduml
