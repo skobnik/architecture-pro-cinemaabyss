@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     librdkafka-dev \
     nginx \
-    && docker-php-ext-install pdo pdo_pgsql sockets \
+    && docker-php-ext-install pdo pdo_pgsql \
     && pecl install rdkafka \
     && docker-php-ext-enable rdkafka
 
