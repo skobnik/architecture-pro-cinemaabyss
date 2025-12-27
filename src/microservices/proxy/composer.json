@@ -1,0 +1,13 @@
+{
+    "name": "cinema/proxy",
+    "require": {
+        "slim/slim": "^4.10",
+        "slim/psr7": "1.8",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ProxyService\\": "src/"
+        }
+    }
+}
