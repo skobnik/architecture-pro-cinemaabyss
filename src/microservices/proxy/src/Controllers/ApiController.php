@@ -61,7 +61,13 @@ class ApiController
 
         return $this->createResponseFromTarget($response, $targetResponse);
     }
-    
+
+    public function getSubscriptions(Request $request, Response $response): Response
+    {
+        $targetResponse = $this->forwardRequest($this->monolithUrl);
+
+        return $this->createResponseFromTarget($response, $targetResponse);
+    }
 
     private function getEnv(string $key, string $default): string
     {
