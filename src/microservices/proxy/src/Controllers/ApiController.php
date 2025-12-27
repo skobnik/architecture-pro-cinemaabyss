@@ -13,6 +13,7 @@ class ApiController
     public bool $gradualMigration;
     public string $monolithUrl;
     public string $moviesServiceUrl;
+    public string $eventUrl;
     private Client $httpClient;
 
     public function __construct()
@@ -22,7 +23,6 @@ class ApiController
         $this->monolithUrl = $this->getEnv('MONOLITH_URL', 'http://monolith:8080');
         $this->moviesServiceUrl = $this->getEnv('MOVIES_SERVICE_URL', 'http://movies-service:8081');
         $this->eventUrl = $this->getEnv('EVENTS_SERVICE_URL', 'http://events-service:8082');
-        
 
         // Создаем HTTP клиент с общими настройками
         $this->httpClient = new Client([
