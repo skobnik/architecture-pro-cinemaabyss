@@ -21,6 +21,8 @@ class ApiController
         $this->gradualMigration = $this->getEnv('GRADUAL_MIGRATION', 'false') === 'true';
         $this->monolithUrl = $this->getEnv('MONOLITH_URL', 'http://monolith:8080');
         $this->moviesServiceUrl = $this->getEnv('MOVIES_SERVICE_URL', 'http://movies-service:8081');
+        $this->eventUrl = $this->getEnv('EVENTS_SERVICE_URL', 'http://events-service:8082');
+        
 
         // Создаем HTTP клиент с общими настройками
         $this->httpClient = new Client([
@@ -38,13 +40,28 @@ class ApiController
 
         return $this->createResponseFromTarget($response, $targetResponse);
     }
-
+    
     public function getUsers(Request $request, Response $response): Response
     {
         $targetResponse = $this->forwardRequest($this->monolithUrl);
 
         return $this->createResponseFromTarget($response, $targetResponse);
     }
+
+    public function getPayments(Request $request, Response $response): Response
+    {
+        $targetResponse = $this->forwardRequest($this->monolithUrl);
+
+        return $this->createResponseFromTarget($response, $targetResponse);
+    }
+    
+    public function getEvent(Request $request, Response $response): Response
+    {
+        $targetResponse = $this->forwardRequest($this->eventUrl);
+
+        return $this->createResponseFromTarget($response, $targetResponse);
+    }
+    
 
     private function getEnv(string $key, string $default): string
     {
@@ -70,11 +87,6 @@ class ApiController
         $path = $_SERVER['REQUEST_URI'] ?? '/';
 
         $url = $baseUrl . $path;
-
-        // Добавляем query параметры, если есть
-        if (!empty($_SERVER['QUERY_STRING'])) {
-            $url .= '?' . $_SERVER['QUERY_STRING'];
-        }
 
         $headers = [];        
 
